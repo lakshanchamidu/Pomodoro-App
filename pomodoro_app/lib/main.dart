@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'Screens/HomeScreen.dart';
+import 'Screens/LoginScreen.dart';
 
 void main() {
   runApp(const SmartPomodoroApp());
@@ -32,9 +32,9 @@ class _SmartPomodoroAppState extends State<SmartPomodoroApp> {
         brightness: Brightness.light,
         useMaterial3: true,
         colorScheme: const ColorScheme.light(
-          background: Color(0xFFFFF5F0),
-          onBackground: Color(0xFF2C3E50),
-          primary: Color(0xFFE74C3C),
+          background: Color(0xFFF8F9FE),
+          onBackground: Color(0xFF1E293B),
+          primary: Color(0xFF6366F1),
           onPrimary: Colors.white,
         ),
       ),
@@ -43,14 +43,14 @@ class _SmartPomodoroAppState extends State<SmartPomodoroApp> {
         brightness: Brightness.dark,
         useMaterial3: true,
         colorScheme: const ColorScheme.dark(
-          background: Color(0xFF1A1A2E),
-          onBackground: Color(0xFFEEEEEE),
-          primary: Color(0xFFFF6B6B),
-          onPrimary: Color(0xFF0F3460),
+          background: Color(0xFF0F172A),
+          onBackground: Color(0xFFF1F5F9),
+          primary: Color(0xFF818CF8),
+          onPrimary: Color(0xFF1E1B4B),
         ),
       ),
 
-      home: HomeScreen(
+      home: LoginScreen(
         onThemeChange: toggleTheme, 
       ),
     );
