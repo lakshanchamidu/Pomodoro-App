@@ -1,31 +1,46 @@
 import 'package:flutter/material.dart';
 import 'HomeScreen.dart';
-import 'SignUpScreen.dart';
 
-class LoginScreen extends StatefulWidget {
+class SignUpScreen extends StatefulWidget {
   final VoidCallback onThemeChange;
   
-  const LoginScreen({super.key, required this.onThemeChange});
+  const SignUpScreen({super.key, required this.onThemeChange});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
+  void _handleSignUp() {
     if (_formKey.currentState!.validate()) {
+      if (!_agreedToTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please agree to the Terms & Conditions'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+        return;
+      }
+      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -49,10 +64,10 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               // -----------------------------------------------------------------------
-              // 🎨 TOP IMAGE SECTION (40% of screen)
+              // 🎨 TOP IMAGE SECTION
               // -----------------------------------------------------------------------
               Container(
-                height: screenHeight * 0.40,
+                height: screenHeight * 0.30,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -90,8 +105,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: const Center(
                           child: Icon(
-                            Icons.timer_rounded,
-                            size: 100,
+                            Icons.person_add_rounded,
+                            size: 80,
                             color: Colors.white,
                           ),
                         ),
@@ -105,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
               // 📝 FORM SECTION
               // -----------------------------------------------------------------------
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 30),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -113,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       // Welcome Text
                       Text(
-                        "Welcome Back!",
+                        "Create Account",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 32,
@@ -126,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 8),
 
                       Text(
-                        "Login to continue your focus journey",
+                        "Sign up to start your productivity journey",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
@@ -135,7 +150,65 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 30),
+
+                      // Name Field
+                      TextFormField(
+                        controller: _nameController,
+                        keyboardType: TextInputType.name,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onBackground,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: "Full Name",
+                          labelStyle: TextStyle(
+                            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.5),
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.person_outline_rounded,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 22,
+                          ),
+                          filled: true,
+                          fillColor: isDark
+                              ? const Color(0xFF1E293B).withOpacity(0.4)
+                              : Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide(
+                              color: isDark 
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.black.withOpacity(0.05),
+                              width: 1,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 18,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your name';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
 
                       // Email Field
                       TextFormField(
@@ -196,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
                       // Password Field
                       TextFormField(
@@ -273,25 +346,132 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Forgot Password
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: Text(
-                            "Forgot Password?",
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                      // Confirm Password Field
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: !_isConfirmPasswordVisible,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onBackground,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: "Confirm Password",
+                          labelStyle: TextStyle(
+                            color: Theme.of(context).colorScheme.onBackground.withOpacity(0.5),
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.lock_outline_rounded,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 22,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isConfirmPasswordVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: Theme.of(context).colorScheme.onBackground.withOpacity(0.4),
+                              size: 22,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                              });
+                            },
+                          ),
+                          filled: true,
+                          fillColor: isDark
+                              ? const Color(0xFF1E293B).withOpacity(0.4)
+                              : Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide(
+                              color: isDark 
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.black.withOpacity(0.05),
+                              width: 1,
                             ),
                           ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 18,
+                          ),
                         ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Terms & Conditions Checkbox
+                      Row(
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: Checkbox(
+                              value: _agreedToTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _agreedToTerms = value ?? false;
+                                });
+                              },
+                              activeColor: Theme.of(context).colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  "I agree to the ",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {},
+                                  child: Text(
+                                    "Terms & Conditions",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: 30),
 
-                      // Login Button
+                      // Sign Up Button
                       Container(
                         height: 58,
                         decoration: BoxDecoration(
@@ -313,7 +493,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: _handleLogin,
+                          onPressed: _handleSignUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -322,7 +502,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           child: const Text(
-                            "Sign In",
+                            "Sign Up",
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -333,14 +513,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 24),
 
-                      // Sign Up Link
+                      // Sign In Link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Don't have an account? ",
+                            "Already have an account? ",
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
                               fontSize: 14,
@@ -348,14 +528,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SignUpScreen(
-                                    onThemeChange: widget.onThemeChange,
-                                  ),
-                                ),
-                              );
+                              Navigator.pop(context);
                             },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.zero,
@@ -363,7 +536,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: Text(
-                              "Sign Up",
+                              "Sign In",
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w700,
