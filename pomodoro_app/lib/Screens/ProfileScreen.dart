@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
+import '../Models/Task.dart';
+import '../Models/UserProfile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -8,68 +12,112 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final Map<String, dynamic> userProfile = {
-    'name': 'Chamidu Lakshan',
-    'email': 'chamidu@example.com',
-    'joinDate': 'January 2024',
-    'bio': 'Passionate developer and productivity enthusiast',
-    'completedSessions': 127,
-    'totalHours': 53,
-    'currentStreak': 7,
-    'level': 12,
-    'xp': 850,
-    'nextLevelXp': 1000,
-  };
+  late Box<Task> taskBox;
+  late Box<UserProfile> profileBox;
+  
+  @override
+  void initState() {
+    super.initState();
+    taskBox = Hive.box<Task>('tasks');
+    profileBox = Hive.box<UserProfile>('userProfile');
+    
+    // Initialize default profile if empty
+    if (profileBox.isEmpty) {
+      profileBox.put('user', UserProfile(
+        name: 'User',
+        email: 'user@example.com',
+        bio: 'Passionate about productivity!',
+        joinDate: DateTime.now(),
+      ));
+    }
+  }
 
-  final List<Map<String, dynamic>> achievements = [
-    {
-      'title': 'First Steps',
-      'description': 'Complete your first Pomodoro',
-      'icon': Icons.flag,
-      'unlocked': true,
-      'color': Colors.green,
-    },
-    {
-      'title': '7-Day Streak',
-      'description': 'Maintain a 7-day streak',
-      'icon': Icons.local_fire_department,
-      'unlocked': true,
-      'color': Colors.orange,
-    },
-    {
-      'title': 'Century Club',
-      'description': 'Complete 100 Pomodoros',
-      'icon': Icons.emoji_events,
-      'unlocked': true,
-      'color': Colors.amber,
-    },
-    {
-      'title': 'Night Owl',
-      'description': 'Complete 10 late-night sessions',
-      'icon': Icons.nightlight,
-      'unlocked': false,
-      'color': Colors.blue,
-    },
-    {
-      'title': 'Early Bird',
-      'description': 'Complete 10 early morning sessions',
-      'icon': Icons.wb_sunny,
-      'unlocked': false,
-      'color': Colors.yellow,
-    },
-    {
-      'title': 'Marathon Runner',
-      'description': 'Complete 50 hours total',
-      'icon': Icons.timer,
-      'unlocked': true,
-      'color': Colors.purple,
-    },
-  ];
+  UserProfile get userProfile => profileBox.get('user', defaultValue: UserProfile(
+    name: 'User',
+    email: 'user@example.com',
+    joinDate: DateTime.now(),
+  ))!;
+
+  // Calculate stats from real data
+  int get completedSessions => taskBox.values.fold(0, (sum, task) => sum + task.completedPomodoros);
+  int get totalHours => (completedSessions * 25 / 60).round();
+  int get currentStreak => taskBox.length; // Simplified - could be enhanced
+  int get level => (completedSessions / 10).floor() + 1;
+  int get xp => completedSessions * 10;
+  int get nextLevelXp => level * 100;
+
+  // Calculate achievements from real data
+  List<Map<String, dynamic>> get achievements {
+    final List<Map<String, dynamic>> earned = [];
+    
+    if (completedSessions >= 1) {
+      earned.add({
+        'title': 'First Steps',
+        'description': 'Complete your first Pomodoro',
+        'icon': Icons.flag,
+        'unlocked': true,
+        'color': Colors.green,
+      });
+    }
+    
+    if (currentStreak >= 7) {
+      earned.add({
+        'title': '7-Day Streak',
+        'description': 'Maintain a 7-day streak',
+        'icon': Icons.local_fire_department,
+        'unlocked': true,
+        'color': Colors.orange,
+      });
+    }
+    
+    if (completedSessions >= 100) {
+      earned.add({
+        'title': 'Century Club',
+        'description': 'Complete 100 Pomodoros',
+        'icon': Icons.emoji_events,
+        'unlocked': true,
+        'color': Colors.amber,
+      });
+    }
+    
+    if (totalHours >= 50) {
+      earned.add({
+        'title': 'Marathon Runner',
+        'description': 'Complete 50 hours total',
+        'icon': Icons.timer,
+        'unlocked': true,
+        'color': Colors.purple,
+      });
+    }
+    
+    // Add locked achievements
+    if (completedSessions < 100) {
+      earned.add({
+        'title': 'Night Owl',
+        'description': 'Complete 10 late-night sessions',
+        'icon': Icons.nightlight,
+        'unlocked': false,
+        'color': Colors.blue,
+      });
+    }
+    
+    if (currentStreak < 7) {
+      earned.add({
+        'title': 'Early Bird',
+        'description': 'Complete 10 early morning sessions',
+        'icon': Icons.wb_sunny,
+        'unlocked': false,
+        'color': Colors.yellow,
+      });
+    }
+    
+    return earned;
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final progress = (userProfile['xp'] as int) / (userProfile['nextLevelXp'] as int);
+    final progress = xp / nextLevelXp;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
@@ -123,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           radius: 56,
                           backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                           child: Text(
-                            userProfile['name'].toString().substring(0, 1),
+                            userProfile.name.substring(0, 1),
                             style: const TextStyle(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
@@ -156,8 +204,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    userProfile['name'] as String,
-                    style: const TextStyle(
+                    userProfile.name,
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -165,8 +213,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    userProfile['email'] as String,
-                    style: const TextStyle(
+                    userProfile.email,
+                    style: TextStyle(
                       fontSize: 14,
                       color: Colors.white70,
                     ),
@@ -179,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Member since ${userProfile['joinDate']}',
+                      'Member since ${DateFormat('MMMM yyyy').format(userProfile.joinDate)}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.white,
@@ -201,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Level ${userProfile['level']}',
+                              'Level $level',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -209,8 +257,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             Text(
-                              '${userProfile['xp']}/${userProfile['nextLevelXp']} XP',
-                              style: const TextStyle(
+                              '$xp/$nextLevelXp XP',
+                              style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.white70,
                               ),
@@ -242,7 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Sessions',
-                      userProfile['completedSessions'].toString(),
+                      completedSessions.toString(),
                       Icons.timer,
                       Colors.blue,
                       isDark,
@@ -252,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Hours',
-                      '${userProfile['totalHours']}h',
+                      '${totalHours}h',
                       Icons.access_time,
                       Colors.green,
                       isDark,
@@ -262,7 +310,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Streak',
-                      '${userProfile['currentStreak']} days',
+                      '$currentStreak days',
                       Icons.local_fire_department,
                       Colors.orange,
                       isDark,
@@ -312,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      userProfile['bio'] as String,
+                      userProfile.bio,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -532,8 +580,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditProfileDialog() {
-    final nameController = TextEditingController(text: userProfile['name'] as String);
-    final emailController = TextEditingController(text: userProfile['email'] as String);
+    final nameController = TextEditingController(text: userProfile.name);
+    final emailController = TextEditingController(text: userProfile.email);
 
     showDialog(
       context: context,
@@ -569,10 +617,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  userProfile['name'] = nameController.text;
-                  userProfile['email'] = emailController.text;
-                });
+                final updatedProfile = userProfile.copyWith(
+                  name: nameController.text,
+                  email: emailController.text,
+                );
+                profileBox.put('user', updatedProfile);
+                setState(() {});
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Profile updated successfully')),
@@ -587,7 +637,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditBioDialog() {
-    final bioController = TextEditingController(text: userProfile['bio'] as String);
+    final bioController = TextEditingController(text: userProfile.bio);
 
     showDialog(
       context: context,
@@ -609,9 +659,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  userProfile['bio'] = bioController.text;
-                });
+                final updatedProfile = userProfile.copyWith(bio: bioController.text);
+                profileBox.put('user', updatedProfile);
+                setState(() {});
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Bio updated successfully')),

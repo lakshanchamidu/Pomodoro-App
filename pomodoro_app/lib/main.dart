@@ -1,7 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'Models/Task.dart';
+import 'Models/UserProfile.dart';
 import 'Screens/LoginScreen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Hive
+  await Hive.initFlutter();
+  
+  // Register adapters
+  Hive.registerAdapter(TaskAdapter());
+  Hive.registerAdapter(UserProfileAdapter());
+  
+  // Open boxes
+  await Hive.openBox<Task>('tasks');
+  await Hive.openBox<UserProfile>('userProfile');
+  
   runApp(const SmartPomodoroApp());
 }
 

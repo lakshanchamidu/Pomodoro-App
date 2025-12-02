@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../Models/Task.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -9,8 +10,22 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  List<Task> tasks = [
-    Task(
+  late Box<Task> taskBox;
+  String selectedFilter = 'All'; // All, Active, Completed
+
+  @override
+  void initState() {
+    super.initState();
+    taskBox = Hive.box<Task>('tasks');
+    
+    // Add sample data if box is empty
+    if (taskBox.isEmpty) {
+      _addSampleTasks();
+    }
+  }
+
+  void _addSampleTasks() {
+    taskBox.put('1', Task(
       id: '1',
       title: 'Complete Flutter Project',
       description: 'Finish the Pomodoro app with all features',
@@ -19,8 +34,9 @@ class _TasksScreenState extends State<TasksScreen> {
       completedPomodoros: 3,
       createdAt: DateTime.now(),
       priority: 'High',
-    ),
-    Task(
+    ));
+    
+    taskBox.put('2', Task(
       id: '2',
       title: 'Study for Exam',
       description: 'Review chapters 1-5',
@@ -30,8 +46,9 @@ class _TasksScreenState extends State<TasksScreen> {
       isCompleted: true,
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
       priority: 'High',
-    ),
-    Task(
+    ));
+    
+    taskBox.put('3', Task(
       id: '3',
       title: 'Exercise',
       description: 'Morning workout routine',
@@ -40,18 +57,18 @@ class _TasksScreenState extends State<TasksScreen> {
       completedPomodoros: 0,
       createdAt: DateTime.now(),
       priority: 'Medium',
-    ),
-  ];
-
-  String selectedFilter = 'All'; // All, Active, Completed
+    ));
+  }
 
   List<Task> get filteredTasks {
+    final allTasks = taskBox.values.toList();
+    
     if (selectedFilter == 'Active') {
-      return tasks.where((task) => !task.isCompleted).toList();
+      return allTasks.where((task) => !task.isCompleted).toList();
     } else if (selectedFilter == 'Completed') {
-      return tasks.where((task) => task.isCompleted).toList();
+      return allTasks.where((task) => task.isCompleted).toList();
     }
-    return tasks;
+    return allTasks;
   }
 
   void _addTask() {
@@ -190,17 +207,20 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                         onPressed: () {
                           if (titleController.text.isNotEmpty) {
-                            setState(() {
-                              tasks.add(Task(
-                                id: DateTime.now().toString(),
-                                title: titleController.text,
-                                description: descriptionController.text,
-                                category: selectedCategory,
-                                estimatedPomodoros: estimatedPomodoros,
-                                createdAt: DateTime.now(),
-                                priority: selectedPriority,
-                              ));
-                            });
+                            final newTask = Task(
+                              id: DateTime.now().toString(),
+                              title: titleController.text,
+                              description: descriptionController.text,
+                              category: selectedCategory,
+                              estimatedPomodoros: estimatedPomodoros,
+                              createdAt: DateTime.now(),
+                              priority: selectedPriority,
+                            );
+                            
+                            // Save to Hive database
+                            taskBox.put(newTask.id, newTask);
+                            
+                            setState(() {});
                             Navigator.pop(context);
                           }
                         },
@@ -219,18 +239,18 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   void _deleteTask(String id) {
-    setState(() {
-      tasks.removeWhere((task) => task.id == id);
-    });
+    // Delete from Hive database
+    taskBox.delete(id);
+    setState(() {});
   }
 
   void _toggleTaskCompletion(String id) {
-    setState(() {
-      final index = tasks.indexWhere((task) => task.id == id);
-      if (index != -1) {
-        tasks[index] = tasks[index].copyWith(isCompleted: !tasks[index].isCompleted);
-      }
-    });
+    final task = taskBox.get(id);
+    if (task != null) {
+      final updatedTask = task.copyWith(isCompleted: !task.isCompleted);
+      taskBox.put(id, updatedTask);
+      setState(() {});
+    }
   }
 
   Color _getPriorityColor(String priority) {
@@ -303,41 +323,39 @@ class _TasksScreenState extends State<TasksScreen> {
           // Task Statistics
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatItem('Total', taskBox.length.toString(), Icons.task_alt, Colors.blue),
+                    _buildStatItem(
+                      'Active',
+                      taskBox.values.where((t) => !t.isCompleted).length.toString(),
+                      Icons.pending_actions,
+                      Colors.orange,
+                    ),
+                    _buildStatItem(
+                      'Completed',
+                      taskBox.values.where((t) => t.isCompleted).length.toString(),
+                      Icons.check_circle,
+                      Colors.green,
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem('Total', tasks.length.toString(), Icons.task_alt, Colors.blue),
-                  _buildStatItem(
-                    'Active',
-                    tasks.where((t) => !t.isCompleted).length.toString(),
-                    Icons.pending_actions,
-                    Colors.orange,
-                  ),
-                  _buildStatItem(
-                    'Completed',
-                    tasks.where((t) => t.isCompleted).length.toString(),
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
+            ),          const SizedBox(height: 16),
 
           // Tasks List
           Expanded(

@@ -1,12 +1,34 @@
+import 'package:hive/hive.dart';
+
+part 'Task.g.dart';
+
+@HiveType(typeId: 0)
 class Task {
+  @HiveField(0)
   final String id;
+  
+  @HiveField(1)
   final String title;
+  
+  @HiveField(2)
   final String description;
+  
+  @HiveField(3)
   final String category;
+  
+  @HiveField(4)
   final int estimatedPomodoros;
+  
+  @HiveField(5)
   final int completedPomodoros;
+  
+  @HiveField(6)
   final bool isCompleted;
+  
+  @HiveField(7)
   final DateTime createdAt;
+  
+  @HiveField(8)
   final String priority; // High, Medium, Low
 
   Task({

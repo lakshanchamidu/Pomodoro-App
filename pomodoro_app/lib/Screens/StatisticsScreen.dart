@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../Models/Task.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -10,34 +12,68 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String selectedPeriod = 'Week'; // Week, Month, Year
+  late Box<Task> taskBox;
 
-  // Sample statistics data
-  final Map<String, dynamic> stats = {
-    'totalPomodoros': 127,
-    'totalMinutes': 3175,
-    'completedTasks': 45,
-    'currentStreak': 7,
-    'bestStreak': 21,
-    'averagePerDay': 4.2,
-  };
+  @override
+  void initState() {
+    super.initState();
+    taskBox = Hive.box<Task>('tasks');
+  }
 
-  final List<Map<String, dynamic>> weeklyData = [
-    {'day': 'Mon', 'count': 6},
-    {'day': 'Tue', 'count': 8},
-    {'day': 'Wed', 'count': 5},
-    {'day': 'Thu', 'count': 7},
-    {'day': 'Fri', 'count': 9},
-    {'day': 'Sat', 'count': 4},
-    {'day': 'Sun', 'count': 3},
-  ];
+  // Calculate total pomodoros from all tasks
+  int get totalPomodoros {
+    return taskBox.values.fold(0, (sum, task) => sum + task.completedPomodoros);
+  }
 
-  final List<Map<String, dynamic>> categoryData = [
-    {'category': 'Development', 'count': 45, 'color': Colors.blue},
-    {'category': 'Education', 'count': 32, 'color': Colors.green},
-    {'category': 'Health', 'count': 20, 'color': Colors.red},
-    {'category': 'Work', 'count': 18, 'color': Colors.orange},
-    {'category': 'General', 'count': 12, 'color': Colors.purple},
-  ];
+  // Calculate total minutes (25 min per pomodoro)
+  int get totalMinutes {
+    return totalPomodoros * 25;
+  }
+
+  // Count completed tasks
+  int get completedTasks {
+    return taskBox.values.where((task) => task.isCompleted).length;
+  }
+
+  // Calculate average pomodoros per day (simplified)
+  double get averagePerDay {
+    if (taskBox.isEmpty) return 0.0;
+    final daysActive = 7; // Simplified - could calculate from task dates
+    return totalPomodoros / daysActive;
+  }
+
+  // Get category breakdown from tasks
+  Map<String, int> get categoryBreakdown {
+    final Map<String, int> breakdown = {};
+    for (var task in taskBox.values) {
+      breakdown[task.category] = (breakdown[task.category] ?? 0) + task.completedPomodoros;
+    }
+    return breakdown;
+  }
+
+  // Generate weekly data (simplified mock for now - could be enhanced with real date tracking)
+  List<Map<String, dynamic>> get weeklyData {
+    return [
+      {'day': 'Mon', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.14).round() : 0},
+      {'day': 'Tue', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.18).round() : 0},
+      {'day': 'Wed', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.12).round() : 0},
+      {'day': 'Thu', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.16).round() : 0},
+      {'day': 'Fri', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.20).round() : 0},
+      {'day': 'Sat', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.10).round() : 0},
+      {'day': 'Sun', 'count': totalPomodoros > 0 ? (totalPomodoros * 0.10).round() : 0},
+    ];
+  }
+
+  // Get category colors
+  Color getCategoryColor(String category) {
+    switch (category) {
+      case 'Development': return Colors.blue;
+      case 'Education': return Colors.green;
+      case 'Health': return Colors.red;
+      case 'Work': return Colors.orange;
+      default: return Colors.purple;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +122,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Total Pomodoros',
-                    stats['totalPomodoros'].toString(),
+                    totalPomodoros.toString(),
                     Icons.timer,
                     Colors.blue,
                     isDark,
@@ -96,7 +132,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Total Hours',
-                    '${(stats['totalMinutes'] / 60).toStringAsFixed(1)}h',
+                    '${(totalMinutes / 60).toStringAsFixed(1)}h',
                     Icons.access_time,
                     Colors.green,
                     isDark,
@@ -112,7 +148,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Tasks Done',
-                    stats['completedTasks'].toString(),
+                    completedTasks.toString(),
                     Icons.check_circle,
                     Colors.orange,
                     isDark,
@@ -122,7 +158,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 Expanded(
                   child: _buildStatCard(
                     'Avg/Day',
-                    stats['averagePerDay'].toStringAsFixed(1),
+                    averagePerDay.toStringAsFixed(1),
                     Icons.trending_up,
                     Colors.purple,
                     isDark,
@@ -162,7 +198,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       const Icon(Icons.local_fire_department, color: Colors.white, size: 40),
                       const SizedBox(height: 8),
                       Text(
-                        '${stats['currentStreak']} Days',
+                        '${taskBox.length} Days',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -170,7 +206,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                       ),
                       const Text(
-                        'Current Streak',
+                        'Active Days',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                     ],
@@ -185,7 +221,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       const Icon(Icons.emoji_events, color: Colors.white, size: 40),
                       const SizedBox(height: 8),
                       Text(
-                        '${stats['bestStreak']} Days',
+                        '${taskBox.length} Tasks',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -193,7 +229,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                       ),
                       const Text(
-                        'Best Streak',
+                        'Total Tasks',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                     ],
@@ -315,59 +351,69 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ],
               ),
-              child: Column(
-                children: categoryData.map((data) {
-                  final total = categoryData.fold<int>(0, (sum, item) => sum + (item['count'] as int));
-                  final percentage = ((data['count'] as int) / total * 100).toInt();
+              child: categoryBreakdown.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text(
+                          'No category data yet',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: categoryBreakdown.entries.map((entry) {
+                        final total = categoryBreakdown.values.fold<int>(0, (sum, count) => sum + count);
+                        final percentage = total > 0 ? ((entry.value / total * 100).toInt()) : 0;
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: data['color'] as Color,
-                                    borderRadius: BorderRadius.circular(3),
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: getCategoryColor(entry.key),
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        entry.key,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  data['category'] as String,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '${data['count']} ($percentage%)',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                  Text(
+                                    '${entry.value} ($percentage%)',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: percentage / 100,
-                            backgroundColor: Colors.grey[300],
-                            valueColor: AlwaysStoppedAnimation<Color>(data['color'] as Color),
-                            minHeight: 8,
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: percentage / 100,
+                                  backgroundColor: Colors.grey[300],
+                                  valueColor: AlwaysStoppedAnimation<Color>(getCategoryColor(entry.key)),
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     ),
-                  );
-                }).toList(),
-              ),
             ),
 
             const SizedBox(height: 24),
@@ -404,9 +450,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildInsight('Your most productive day is Friday', Icons.calendar_today),
-                  _buildInsight('You\'re 20% more productive than last week', Icons.trending_up),
-                  _buildInsight('Keep up your 7-day streak!', Icons.local_fire_department),
+                  _buildInsight('Complete more tasks to see insights', Icons.lightbulb),
+                  _buildInsight('Your productivity is tracked in real-time', Icons.trending_up),
+                  _buildInsight('Keep adding tasks to build your streak!', Icons.local_fire_department),
                 ],
               ),
             ),

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pomodoro_app/Screens/FocusSessionScreen.dart';
+import 'package:pomodoro_app/Models/Task.dart';
 
 class HomePageWidget extends StatefulWidget {
   const HomePageWidget({super.key});
@@ -18,6 +20,7 @@ class _HomeWidget extends State<HomePageWidget> {
 
   // Pomodoro Variables
   Timer? timer;
+  Timer? clockTimer;
   int totalSeconds = 1500; // default 25 min
   int remainingSeconds = 1500;
   double progressValue = 1.0;
@@ -30,15 +33,24 @@ class _HomeWidget extends State<HomePageWidget> {
     super.initState();
 
     // Clock Timer
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      final now = DateTime.now();
-      setState(() {
-        dateText = DateFormat('MMM dd yyyy').format(now).toUpperCase();
-        dayText = DateFormat('EEEE').format(now).toUpperCase();
-        timeText = DateFormat('hh:mm').format(now);
-        amPm = DateFormat('a').format(now);
-      });
+    clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        final now = DateTime.now();
+        setState(() {
+          dateText = DateFormat('MMM dd yyyy').format(now).toUpperCase();
+          dayText = DateFormat('EEEE').format(now).toUpperCase();
+          timeText = DateFormat('hh:mm').format(now);
+          amPm = DateFormat('a').format(now);
+        });
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    clockTimer?.cancel();
+    timer?.cancel();
+    super.dispose();
   }
 
   // -----------------------------------------------------------------------
@@ -453,7 +465,25 @@ class _HomeWidget extends State<HomePageWidget> {
                   _modernControlButton(
                     label: "Start",
                     icon: Icons.play_arrow_rounded,
-                    onTap: startTimer,
+                    onTap: () {
+                      // Create a default task for the focus session
+                      final defaultTask = Task(
+                        id: DateTime.now().toString(),
+                        title: 'Focus Session',
+                        description: 'Current pomodoro session',
+                        category: 'Focus',
+                        estimatedPomodoros: 1,
+                        createdAt: DateTime.now(),
+                        priority: 'High',
+                      );
+                      
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FocusSessionScreen(task: defaultTask),
+                        ),
+                      );
+                    },
                     isPrimary: true,
                   ),
                   const SizedBox(width: 12),
